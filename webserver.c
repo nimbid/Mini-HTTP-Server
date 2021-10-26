@@ -54,7 +54,7 @@ void build_http_err_response(char *err_msg, char *version, int errsize, int conn
 
 static void sig_handler(int signo)
 {
-	if((signo == SIGINT) || (signo == SIGTERM))
+    if((signo == SIGINT) || (signo == SIGTERM))
     {   
         write(STDERR_FILENO, "\nCaught SIGINT!. Closing server.\n", 33);
         close(server_socket);
