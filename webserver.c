@@ -424,7 +424,7 @@ void *handle_new_connection(void *vargp)
         memset(next_header_key, 0, sizeof(next_header_key));
         memset(next_header_val, 0, sizeof(next_header_val));
 
-        printf("Bytes read: %zu\n", bytes_read);
+        printf("Bytes read: %zd\n", bytes_read);
 
         // Parse HTTP request.
         char *context = NULL;
@@ -455,7 +455,7 @@ void *handle_new_connection(void *vargp)
 
         char *lowercase_connection_val = str_to_lower_case(next_header_val[1]);
         if (strcmp(lowercase_connection_val, keep_alive_str) == 0)
-        {
+        {   
             keep_alive = 1;
             timeout.tv_sec = DEF_HTTP_KEEPALIVE;
             setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(struct timeval));
@@ -620,7 +620,6 @@ void *handle_new_connection(void *vargp)
                 {
                     build_http_ok_response(post_contents, http_version, content_len, content_type, 0, send_buffer);
                 }
-                printf("POSTED file: %s\n", post_contents);
                 send(client_socket, send_buffer, strlen(send_buffer), 0);
                 send(client_socket, post_contents, content_len, 0);
                 free(post_contents);
@@ -646,7 +645,7 @@ void *handle_new_connection(void *vargp)
             }
         }
     }
-
+    
     if (bytes_read < 0 && errno == EWOULDBLOCK)
     {   
         pthread_detach(pthread_self());
