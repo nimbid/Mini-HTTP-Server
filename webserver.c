@@ -51,7 +51,7 @@ char *handle_http_post_request(char *file_uri, ssize_t *file_len, char *file_typ
 void build_http_ok_response(char *resp_msg, char *version, ssize_t filesize, char *filetype, int conn_stat, char *buff);
 void build_http_err_response(char *err_msg, char *version, int errsize, int conn_stat, char *buff);
 
-
+// SIGINT Handler.
 static void sig_handler(int signo)
 {
     if((signo == SIGINT) || (signo == SIGTERM))
@@ -63,6 +63,12 @@ static void sig_handler(int signo)
 }
 
 
+/*
+Takes in a string representing the filepath and 
+returns the extension of the file.
+Params -> filepath string
+Return -> extension string
+*/
 char *getExt (char *fspec) 
 {
     char *c = strrchr (fspec, '.');
@@ -72,6 +78,13 @@ char *getExt (char *fspec)
     return c+1;
 }
 
+
+/*
+Takes in a string representing filepath and 
+returns the MIME content type of the file.
+Params -> filepath string
+Return -> MIME type string
+*/
 char *get_content_type(char *path)
 {   
     char *contype = malloc(sizeof(char)*11);
@@ -102,6 +115,9 @@ char *get_content_type(char *path)
 
     return contype;
 }
+
+
+// Guard function to look for failures.
 int check(int n, char* err)
 {
     if (n == -1)
@@ -112,6 +128,13 @@ int check(int n, char* err)
     return n;
 }
 
+
+/*
+Takes in a string and returns the 
+lowercase version for it.
+Params ->  string
+Return -> lowercase string
+*/
 char *str_to_lower_case(char *str)
 {   
     for (size_t i = 0; str[i]; i++)
@@ -122,6 +145,12 @@ char *str_to_lower_case(char *str)
 }
 
 
+/*
+Takes in a string representing filepath and 
+checks whether the file exists.
+Params -> filepath string
+Return -> 1 if file exists; 0 if it doesn't.
+*/
 int is_valid_path(char *actual_file_path)
 {   
     if (access(actual_file_path, F_OK) != 0)
@@ -136,6 +165,12 @@ int is_valid_path(char *actual_file_path)
 }
 
 
+/*
+Combines HTTP headers and body and writes
+to a a buffer. Output differs based on value
+of conn_stat flag representing keep-alive.
+Return -> buffer containing message to send back.
+*/
 void build_http_ok_response(char *resp_msg, char *version, ssize_t filesize, char *filetype, int conn_stat, char *buff)
 {  
     if (resp_msg == NULL)
@@ -153,6 +188,12 @@ void build_http_ok_response(char *resp_msg, char *version, ssize_t filesize, cha
 }
 
 
+/*
+Forms an HTTP 500 error response.
+Output differs based on value of conn_stat 
+flag representing keep-alive.
+Return -> buffer containing message to send back.
+*/
 void build_http_err_response(char *err_msg, char *version, int errsize, int conn_stat, char *buff)
 {   
     sprintf(buff, "%s 500 Internal Server Error\r\n""Content-Type: text/html\r\n""Connection: %s\r\n""Content-Length: %d\r\n\r\n""%s\r\n", 
@@ -162,7 +203,11 @@ void build_http_err_response(char *err_msg, char *version, int errsize, int conn
             err_msg);
 }
 
-
+/*
+Handles HTTP HEAD request.
+Return -> 1 if file is valid; 
+          0 if not.
+*/
 int handle_http_head_request(char *file_uri, ssize_t *file_len, char *file_type)
 {   
     struct stat st;
@@ -198,6 +243,11 @@ int handle_http_head_request(char *file_uri, ssize_t *file_len, char *file_type)
 }
 
 
+/*
+Handles HTTP GET request.
+Return -> string buff containing file if file exists.
+          NULL if file does not exist.
+*/
 char *handle_http_get_request(char *file_uri, ssize_t *file_len, char *file_type)
 {
     printf("Came to the get req handler.\n");
@@ -236,11 +286,14 @@ char *handle_http_get_request(char *file_uri, ssize_t *file_len, char *file_type
         file_type = NULL;
         return NULL;
     }
-
-
 }
 
 
+/*
+Handles HTTP POST request.
+Return -> string buff containing file if file exists.
+          NULL if file does not exist.
+*/
 char *handle_http_post_request(char *file_uri, ssize_t *file_len, char *file_type, char *post_data)
 {
     printf("Came to the post req handler.\n");
@@ -338,7 +391,7 @@ int main(int argc, char **argv)
                 accept(server_socket, (struct sockaddr *)&srv_addr, (socklen_t *)&srv_addrlen), 
                 "accept failed");
         printf("Connected\r\n");
-        pthread_create(&thread_id, NULL, handle_new_connection, client_socket);
+        pthread_create(&thread_id, NULL, handle_new_connection, client_socket);  // Spawn a new thread to handle request.
     }
     // Exit process after closing the socket.
     close(server_socket);
@@ -372,6 +425,7 @@ void *handle_new_connection(void *vargp)
         memset(next_header_val, 0, sizeof(next_header_val));
 
         printf("Bytes read: %zu\n", bytes_read);
+
         // Parse HTTP request.
         char *context = NULL;
         char *token = strtok_r(recv_buffer, "\r\n", &context);
@@ -397,7 +451,7 @@ void *handle_new_connection(void *vargp)
             line_count++;
         }
 
-        memset(recv_buffer, 0, sizeof(recv_buffer));
+        memset(recv_buffer, 0, sizeof(recv_buffer));                      // Reset receive buffer.
 
         char *lowercase_connection_val = str_to_lower_case(next_header_val[1]);
         if (strcmp(lowercase_connection_val, keep_alive_str) == 0)
@@ -422,6 +476,7 @@ void *handle_new_connection(void *vargp)
         {   
             printf("Invalid HTTP method.\n");
             memset(send_buffer, 0, sizeof(send_buffer));
+
             // Send error response and keep connection alive/kill.
             if (keep_alive == 1)
             {
@@ -446,6 +501,7 @@ void *handle_new_connection(void *vargp)
         {
             printf("Invalid HTTP version.\n");
             memset(send_buffer, 0, sizeof(send_buffer));
+            
             // Send error response and keep connection alive/kill.
             if (keep_alive == 1)
             {
